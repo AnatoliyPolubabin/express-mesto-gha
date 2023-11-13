@@ -4,7 +4,7 @@
 /* eslint-disable function-paren-newline */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable indent */
-const Card = require('../models/card');
+const Card = require('../models/cards');
 
 const getCards = (req, res, next) => {
   Card.find({})
