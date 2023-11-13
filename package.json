@@ -13,6 +13,7 @@
     "dev": "cross-env PORT=3000 nodemon --inspect app.js"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin-js": "^1.1.0",
     "eslint": "^7.23.0",
     "eslint-config-airbnb-base": "^14.2.1",
     "eslint-plugin-base": "^1.0.0",
