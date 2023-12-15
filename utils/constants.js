@@ -1,4 +1,4 @@
-// utils/httpStatusCodes.js
+
 const HTTP_STATUS_CODES = {
   OK: 200,
   CREATED: 201,
