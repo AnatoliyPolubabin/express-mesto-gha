@@ -7,49 +7,47 @@
 /* eslint-disable indent */
 /* eslint-disable function-paren-newline */
 /* eslint-disable semi */
+
 const User = require('../models/user');
+const { HTTP_STATUS_CODES } = require('../utils/constants');
 
 const getUsers = (req, res) => {
   User.find({})
     .then((users) => res.send(users))
-    .catch((error) => res.status(500).send({ message: error }));
+    .catch((error) => res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: error }));
 };
 
 const getUserId = (req, res) => {
-  const id  = req.params.id;
+  const id = req.params.id;
 
   return User.findById(id)
     .then((user) => {
       if (!user) {
-        return res.status(404)
-        .send({ message: 'Пользователь не найден' });
+        return res.status(HTTP_STATUS_CODES.NOT_FOUND).send({ message: 'Пользователь не найден' });
       }
-      return res.status(200).send(user);
+      return res.status(HTTP_STATUS_CODES.OK).send(user);
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        res.status(400)
-        .send({ message: 'не найден пользователь ' });
+        res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'не найден пользователь ' });
         return;
       }
-      res.status(500).send({ message: 'Ошибка на сервере' });
+      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на сервере' });
     });
-}
+};
 
 const createUser = (req, res) => {
   const { name, about, avatar } = req.body;
   User.create({ name, about, avatar })
     .then((user) => {
-      res.status(201).send(user);
+      res.status(HTTP_STATUS_CODES.CREATED).send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400)
-        .send({ message: 'Неверно' });
+        res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'Неверно' });
         return;
       }
-      res.status(500)
-      .send({ message: 'Ошибка' });
+      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка' });
     });
 };
 
@@ -61,20 +59,18 @@ const updateUser = (req, res, next) => {
     { new: true, runValidators: true })
     .then((user) => {
       if (!user) {
-        return res
-          .status(404)
-          .send({ message: 'Пользователь не найден' });
+        return res.status(HTTP_STATUS_CODES.NOT_FOUND).send({ message: 'Пользователь не найден' });
       }
       return res.send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(400).send({ message: 'Неверные данный' });
+        return res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'Неверные данный' });
       }
-      return res.status(500).send({ message: 'Ошибка на сервере' });
+      return res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на сервере' });
     })
     .catch(next);
-}
+};
 
 const updateAvatar = (req, res, next) => {
   const { avatar } = req.body;
@@ -84,19 +80,16 @@ const updateAvatar = (req, res, next) => {
     { new: true, runValidators: true })
     .then((user) => {
       if (!user) {
-        return res
-        .status(404)
-        .send({ message: 'Пользователь не найден' });
+        return res.status(HTTP_STATUS_CODES.NOT_FOUND).send({ message: 'Пользователь не найден' });
       }
       return res.send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(400).send(
-          { message: 'Неверные данные' })
+        return res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'Неверные данные' });
       }
-      return res.status(500).send({ message: 'Ошибка на сервере' });
+      return res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на сервере' });
     });
 };
 
-module.exports = { getUsers, getUserId, createUser, updateUser, updateAvatar }
+module.exports = { getUsers, getUserId, createUser, updateUser, updateAvatar };
