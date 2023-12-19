@@ -6,7 +6,7 @@ const {
   likeCard,
   dislikeCard,
   deleteCard,
-} = require('../controllers/cards');
+} = require('../controllers/card');
 
 const { validationCreateCard, validationCardId } = require('../middlewares/validations');
 
