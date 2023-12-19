@@ -11,7 +11,6 @@ const getUsers = (req, res, next) => {
     .then((users) => res.send(users))
     .catch(next);
 };
-
 const getUser = (req, res, next) => {
   const { userId } = req.params;
   User.findById(userId)
