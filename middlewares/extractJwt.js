@@ -1,4 +1,6 @@
 module.exports = (req, res, next) => {
-  const token = req.cookies.jwt;
+  if (jwt) {
+    req.headers.authorization = `Bearer ${jwt}`;
+  }
   next();
 };
