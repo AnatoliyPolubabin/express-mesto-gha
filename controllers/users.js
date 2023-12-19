@@ -38,30 +38,26 @@ const createUser = (req, res, next) => {
     password,
   } = req.body;
 
-  User.findOne({ email })
+  bcrypt.hash(password, 10)
+    .then((hash) => User.create({
+      name,
+      about,
+      avatar,
+      email,
+      password: hash,
+    }))
     .then((user) => {
-      if (user) {
-        throw new ConflictError('Пользователь уже создан');
+      res.send(formatUser(user));
+    })
+    .catch((err) => {
+      if (err.code === 11000) {
+        next(new ConflictError('Пользователь уже создан'));
+      } else if (err.name === 'ValidationError') {
+        next(new BadRequestError('Неверно'));
+      } else {
+        next(err);
       }
-      bcrypt.hash(password, 10)
-        .then((hash) => User.create({
-          name,
-          about,
-          avatar,
-          email,
-          password: hash,
-        }))
-        .then((us) => {
-          res.send(formatUser(us));
-        })
-        .catch((err) => {
-          if (err.name === 'ValidationError') {
-            next(new BadRequestError('Неверно'));
-          } else {
-            next(err);
-          }
-        });
-    }).catch(next);
+    });
 };
 
 const updateUser = (req, res, next) => {
