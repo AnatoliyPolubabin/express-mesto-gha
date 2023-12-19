@@ -1,10 +1,23 @@
-/* eslint-disable import/newline-after-import */
 const router = require('express').Router();
 
-// eslint-disable-next-line object-curly-newline
-const { getUsers, getUserId, createUser, updateUser, updateAvatar } = require('../controllers/users');
+const {
+  getUsers,
+  getUser,
+  updateUser,
+  updateAvatar,
+  getCurrentUser,
+} = require('../controllers/users');
+
+const { validationUserId, validationUpdateUser, validationUpdateAvatar } = require('../middlewares/validations');
+
 router.get('/', getUsers);
-router.get('/:userId', getUserId);
-router.post('/', createUser);
-router.patch('/me', updateUser);
-router.patch('/me/avatar', updateAvatar);
+
+router.get('/me', getCurrentUser);
+
+router.get('/:userId', validationUserId, getUser);
+
+router.patch('/me', validationUpdateUser, updateUser);
+
+router.patch('/me/avatar', validationUpdateAvatar, updateAvatar);
+
+module.exports = router;

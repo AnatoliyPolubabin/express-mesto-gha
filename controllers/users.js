@@ -1,54 +1,68 @@
-/* eslint-disable prefer-destructuring */
-/* eslint-disable no-multi-spaces */
-/* eslint-disable object-curly-newline */
-/* eslint-disable eol-last */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-unused-vars */
-/* eslint-disable indent */
-/* eslint-disable function-paren-newline */
-/* eslint-disable semi */
-
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const { HTTP_STATUS_CODES } = require('../utils/constants');
+const { formatUser } = require('../utils/constants');
+const NotFoundError = require('../errs/NotFoundError');
+const BadRequestError = require('../errs/BadRequestError');
+const ConflictError = require('../errs/ConflictError');
 
-const getUsers = (req, res) => {
+const getUsers = (req, res, next) => {
   User.find({})
     .then((users) => res.send(users))
-    .catch((error) => res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: error }));
+    .catch(next);
 };
 
-const getUserId = (req, res) => {
-  const id = req.params.id;
-
-  return User.findById(id)
+const getUser = (req, res, next) => {
+  const { userId } = req.params;
+  User.findById(userId)
     .then((user) => {
       if (!user) {
-        return res.status(HTTP_STATUS_CODES.NOT_FOUND).send({ message: 'Пользователь не найден' });
+        throw new NotFoundError('Не найдено');
       }
-      return res.status(HTTP_STATUS_CODES.OK).send(user);
+      return res.send(formatUser(user));
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'не найден пользователь ' });
-        return;
+        next(new BadRequestError('Некорректные данные'));
+      } else {
+        next(err);
       }
-      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на сервере' });
     });
 };
 
-const createUser = (req, res) => {
-  const { name, about, avatar } = req.body;
-  User.create({ name, about, avatar })
+const createUser = (req, res, next) => {
+  const {
+    name,
+    about,
+    avatar,
+    email,
+    password,
+  } = req.body;
+
+  User.findOne({ email })
     .then((user) => {
-      res.status(HTTP_STATUS_CODES.CREATED).send(user);
-    })
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'Неверно' });
-        return;
+      if (user) {
+        throw new ConflictError('Пользователь уже создан');
       }
-      res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка' });
-    });
+      bcrypt.hash(password, 10)
+        .then((hash) => User.create({
+          name,
+          about,
+          avatar,
+          email,
+          password: hash,
+        }))
+        .then((us) => {
+          res.send(formatUser(us));
+        })
+        .catch((err) => {
+          if (err.name === 'ValidationError') {
+            next(new BadRequestError('Неверно'));
+          } else {
+            next(err);
+          }
+        });
+    }).catch(next);
 };
 
 const updateUser = (req, res, next) => {
@@ -56,20 +70,21 @@ const updateUser = (req, res, next) => {
   User.findByIdAndUpdate(
     req.user._id,
     { name, about },
-    { new: true, runValidators: true })
+    { new: true, runValidators: true },
+  )
     .then((user) => {
       if (!user) {
-        return res.status(HTTP_STATUS_CODES.NOT_FOUND).send({ message: 'Пользователь не найден' });
+        throw new NotFoundError('Пользователь не найден');
       }
-      return res.send(user);
+      return res.send(formatUser(user));
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'Неверные данный' });
+        next(new BadRequestError('Неверные данные'));
+      } else {
+        next(err);
       }
-      return res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на сервере' });
-    })
-    .catch(next);
+    });
 };
 
 const updateAvatar = (req, res, next) => {
@@ -77,19 +92,63 @@ const updateAvatar = (req, res, next) => {
   User.findByIdAndUpdate(
     req.user._id,
     { avatar },
-    { new: true, runValidators: true })
+    { new: true, runValidators: true },
+  )
     .then((user) => {
       if (!user) {
-        return res.status(HTTP_STATUS_CODES.NOT_FOUND).send({ message: 'Пользователь не найден' });
+        throw new NotFoundError('Пользователь не найден');
       }
-      return res.send(user);
+      return res.send(formatUser(user));
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(HTTP_STATUS_CODES.BAD_REQUEST).send({ message: 'Неверные данные' });
+        next(new BadRequestError('Неверные данные'));
+      } else {
+        next(err);
       }
-      return res.status(HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на сервере' });
     });
 };
 
-module.exports = { getUsers, getUserId, createUser, updateUser, updateAvatar };
+const getCurrentUser = (req, res, next) => {
+  User.findOne({ _id: req.user._id })
+    .then((user) => {
+      if (!user) {
+        throw new NotFoundError('Пользователь не найден');
+      }
+      return res.send(formatUser(user));
+    })
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        next(new BadRequestError('Неверные данные'));
+      } else {
+        next(err);
+      }
+    });
+};
+
+const login = (req, res, next) => {
+  const { email, password } = req.body;
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, 'super-strong-secret', { expiresIn: '7d' });
+      res.cookie('jwt', token, {
+        maxAge: 24 * 7 * 60 * 60,
+        httpOnly: true,
+        sameSite: true,
+      })
+        .send({ message: 'Успешная авторизация' });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+module.exports = {
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  updateAvatar,
+  getCurrentUser,
+  login,
+};

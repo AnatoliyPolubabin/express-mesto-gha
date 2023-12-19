@@ -1,6 +1,6 @@
-/* eslint-disable eol-last */
-/* eslint-disable indent */
 const mongoose = require('mongoose');
+
+const validator = require('validator');
 
 const cardSchema = new mongoose.Schema({
   name: {
@@ -12,6 +12,10 @@ const cardSchema = new mongoose.Schema({
   link: {
     required: true,
     type: String,
+    validate: {
+      validator: (v) => validator.isURL(v),
+      message: 'Некорректный URL',
+    },
   },
   owner: {
     required: true,

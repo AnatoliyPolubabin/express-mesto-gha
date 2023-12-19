@@ -1,10 +1,7 @@
-/* eslint-disable no-undef */
-/* eslint-disable eol-last */
-/* eslint-disable object-curly-newline */
-/* eslint-disable function-paren-newline */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable indent */
-const Card = require('../models/cards');
+const Card = require('../models/card');
+const NotFoundError = require('../errs/NotFoundError');
+const BadRequestError = require('../errs/BadRequestError');
+const ForbiddenError = require('../errs/ForbiddenError');
 
 const getCards = (req, res, next) => {
   Card.find({})
@@ -14,89 +11,87 @@ const getCards = (req, res, next) => {
 
 const createCard = (req, res, next) => {
   const { name, link } = req.body;
-  const userId = req.user._id;
+  const owner = req.user._id;
 
-  Card.create({ name, link, userId })
+  Card.create({ name, link, owner })
     .then((card) => {
       res.status(201).send(card);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(400).send({ message: 'Неверные данные' });
+        next(new BadRequestError('Неверные данные'));
+      } else {
+        next(err);
       }
-      return err;
-    })
-    .catch(next);
+    });
 };
 
 const likeCard = (req, res, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
     { $addToSet: { likes: req.user._id } },
-    { new: true })
+    { new: true },
+  )
     .then((card) => {
       if (!card) {
-        return res.status(404)
-        .send({ message: 'Такой карточки нет' });
+        throw new NotFoundError('Такой карточки нет');
       }
       return res.send(card);
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        return res.status(400)
-          .send({ message: 'Неверный id' });
+        next(new BadRequestError('Неверный id'));
+      } else {
+        next(err);
       }
-      return res.status(500).send({ message: 'Ошибка на сервере' });
-    })
-    .catch(next);
+    });
 };
 
 const dislikeCard = (req, res, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
     { $pull: { likes: req.user._id } },
-    { new: true })
+    { new: true },
+  )
     .then((card) => {
       if (!card) {
-        return res.status(404).send({ message: 'Карточки не существует' });
+        throw new NotFoundError('Карточки не существует');
       }
       return res.send(card);
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        return res.status(400)
-          .send({ message: 'Неверный id' });
+        next(new BadRequestError('Неверный id'));
+      } else {
+        next(err);
       }
-      return res.status(500).send({ message: 'Ошибка на сервере' });
-    })
-    .catch(next);
+    });
 };
 
 const deleteCard = (req, res, next) => {
   const { cardId } = req.params;
-  return Card.findById(cardId)
+  Card.findById(cardId)
     .then((card) => {
       if (!card) {
-        return res.status(404)
-          .send({ message: 'Карточки не существует' });
+        throw new NotFoundError('Карточки не существует');
+      } else if (card.owner.toString() !== req.user._id) {
+        throw new ForbiddenError('Удаление невозможно');
       }
-      return res.send(card);
+      return card.deleteOne().then(() => res.send({ message: 'Карточка удалена' }));
     })
-    .then((card) => {
-      if (card.userId.toString() === req.user._id) {
-        Card.findByIdAndRemove(cardId).then(() => res.send(card));
-      }
-      return res.status(403)
-      .send({ message: 'Возможность удаления своих карточек' });
-  })
     .catch((err) => {
-    if (err.name === 'CastError') {
-      return res.status(400)
-        .send({ message: 'Неверный id' });
-    }
-      return res.status(500).send({ message: 'Ошибка на сервере' });
-    })
-    .catch(next);
+      if (err.name === 'CastError') {
+        next(new BadRequestError('Неверный id'));
+      } else {
+        next(err);
+      }
+    });
 };
 
-module.exports = { getCards, createCard, deleteCard, likeCard, dislikeCard };
+module.exports = {
+  getCards,
+  createCard,
+  deleteCard,
+  likeCard,
+  dislikeCard,
+};
