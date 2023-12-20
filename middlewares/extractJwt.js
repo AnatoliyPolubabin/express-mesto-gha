@@ -1,22 +1,18 @@
 const jwt = require('jsonwebtoken');
 const NotFoundError = require('../errs/NotFoundError');
 
-module.exports = (req, res, next) => {
-  const { authorization } = req.headers;
-
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    next(new NotFoundError('Необходима авторизация'));
-  }
-
-  const token = authorization.replace('Bearer ', '');
+const auth = (req, res, next) => {
+  const token = req.cookies.jwt;
   let payload;
 
   try {
-    payload = jwt.verify(token, 'super-strong-secret');
+    payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {
-    next(new NotFoundError('Необходима авторизация:'));
+    next(new NotFoundError({ message: 'Необходима авторизация' }));
   }
-
   req.user = payload;
+
   next();
 };
+
+module.exports = auth;
