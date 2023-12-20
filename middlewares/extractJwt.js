@@ -1,7 +1,8 @@
 module.exports = (req, res, next) => {
-  const token = req.cookies.jwt;
-  if (token) {
-    req.headers.authorization = `Bearer ${token}`;
+  const { jwt } = req.cookies;
+  if (jwt) {
+    req.headers.authorization = `Bearer ${jwt}`;
+    res.clearCookie('jwt');
   }
   next();
 };
