@@ -1,7 +1,11 @@
 module.exports = (req, res, next) => {
-  const token = req.cookies.jwt;
-  if (token) {
-    req.headers.authorization = `Bearer ${token}`;
+  let payload;
+  try {
+    const token = req.cookies._id;
+    payload = jwt.verify(token, 'secret-key');
+    req.user = payload;
+    return next();
+  } catch (error) {
+    return next(new UnauthorizedError('Неверные авторизационные данные'));
   }
-  next();
 };
