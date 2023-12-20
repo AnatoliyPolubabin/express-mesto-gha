@@ -1,11 +1,22 @@
+const jwt = require('jsonwebtoken');
+const NotFoundError = require('../errs/NotFoundError');
+
 module.exports = (req, res, next) => {
-  let payload;
-  try {
-    const token = req.cookies._id;
-    payload = jwt.verify(token, 'secret-key');
-    req.user = payload;
-    return next();
-  } catch (error) {
-    return next(new UnauthorizedError('Неверные авторизационные данные'));
+  const { authorization } = req.headers;
+
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    next(new NotFoundError('Необходима авторизация'));
   }
+
+  const token = authorization.replace('Bearer ', '');
+  let payload;
+
+  try {
+    payload = jwt.verify(token, 'super-strong-secret');
+  } catch (err) {
+    next(new NotFoundError('Необходима авторизация:'));
+  }
+
+  req.user = payload;
+  next();
 };
