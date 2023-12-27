@@ -7,7 +7,6 @@ const { errors } = require('celebrate');
 const { login, createUser } = require('./controllers/users');
 const { validationLogin, validationCreateUser } = require('./middlewares/validations');
 const auth = require('./middlewares/auth');
-const extractJwt = require('./middlewares/extractJwt');
 const handleError = require('./middlewares/handleError');
 const routes = require('./routes/index');
 
@@ -17,7 +16,6 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(extractJwt);
 
 app.post('/signin', validationLogin, login);
 app.post('/signup', validationCreateUser, createUser);
